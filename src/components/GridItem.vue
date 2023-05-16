@@ -345,6 +345,7 @@
                 this.tryMakeResizable();
             },
             rowHeight: function () {
+                this.tryMakeResizable();
                 this.createStyle();
                 this.emitContainerResized();
             },
