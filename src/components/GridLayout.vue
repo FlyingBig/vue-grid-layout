@@ -65,6 +65,10 @@ export default {
       type: Boolean,
       default: true,
     },
+    freeDrag: {
+      type: Boolean,
+      default: true,
+    },
     colNum: {
       type: Number,
       default: 12,
@@ -191,7 +195,6 @@ export default {
     this.$emit("layout-mounted", this.layout);
     this.$nextTick(function () {
       validateLayout(this.layout);
-
       this.originalLayout = this.layout;
       const self = this;
       this.$nextTick(function () {
@@ -199,24 +202,22 @@ export default {
 
         self.initResponsiveFeatures();
 
-        //self.width = self.$el.offsetWidth;
         addWindowEventListener("resize", self.onWindowResize);
 
-        compact(self.layout, self.verticalCompact);
-
+        compact(self.layout, self.verticalCompact, self.freeDrag);
         self.$emit("layout-updated", self.layout);
 
         self.updateHeight();
-        self.$nextTick(function () {
-          this.erd = elementResizeDetectorMaker({
-            strategy: "scroll", //<- For ultra performance.
-            // See https://github.com/wnr/element-resize-detector/issues/110 about callOnAdd.
-            callOnAdd: false,
-          });
-          this.erd.listenTo(self.$refs.item, function () {
-            self.onWindowResize();
-          });
-        });
+            self.$nextTick(function () {
+              this.erd = elementResizeDetectorMaker({
+                strategy: "scroll", //<- For ultra performance.
+                // See https://github.com/wnr/element-resize-detector/issues/110 about callOnAdd.
+                callOnAdd: false,
+              });
+              this.erd.listenTo(self.$refs.item, function () {
+                self.onWindowResize();
+              });
+            });
       });
     });
   },
@@ -228,25 +229,25 @@ export default {
         this.eventBus.$emit("updateWidth", this.width);
         if (oldval === null) {
           /*
-                            If oldval == null is when the width has never been
-                            set before. That only occurs when mouting is
-                            finished, and onWindowResize has been called and
-                            this.width has been changed the first time after it
-                            got set to null in the constructor. It is now time
-                            to issue layout-ready events as the GridItems have
-                            their sizes configured properly.
+            If oldval == null is when the width has never been
+            set before. That only occurs when mouting is
+            finished, and onWindowResize has been called and
+            this.width has been changed the first time after it
+            got set to null in the constructor. It is now time
+            to issue layout-ready events as the GridItems have
+            their sizes configured properly.
 
-                            The reason for emitting the layout-ready events on
-                            the next tick is to allow for the newly-emitted
-                            updateWidth event (above) to have reached the
-                            children GridItem-s and had their effect, so we're
-                            sure that they have the final size before we emit
-                            layout-ready (for this GridLayout) and
-                            item-layout-ready (for the GridItem-s).
+            The reason for emitting the layout-ready events on
+            the next tick is to allow for the newly-emitted
+            updateWidth event (above) to have reached the
+            children GridItem-s and had their effect, so we're
+            sure that they have the final size before we emit
+            layout-ready (for this GridLayout) and
+            item-layout-ready (for the GridItem-s).
 
-                            This way any client event handlers can reliably
-                            invistigate stable sizes of GridItem-s.
-                        */
+            This way any client event handlers can reliably
+            invistigate stable sizes of GridItem-s.
+        */
           this.$nextTick(() => {
             this.$emit("layout-ready", self.layout);
           });
@@ -307,10 +308,10 @@ export default {
           this.initResponsiveFeatures();
         }
 
-        compact(this.layout, this.verticalCompact);
+        compact(this.layout, this.verticalCompact, this.freeDrag);
         this.eventBus.$emit("updateWidth", this.width);
         this.updateHeight();
-
+        console.log(this.layout)
         this.$emit("layout-updated", this.layout);
       }
     },
@@ -371,9 +372,10 @@ export default {
         x,
         y,
         true,
-        this.preventCollision
+        this.preventCollision,
+        this.freeDrag
       );
-      compact(this.layout, this.verticalCompact);
+      compact(this.layout, this.verticalCompact, this.freeDrag);
       // needed because vue can't detect changes on array element properties
       this.eventBus.$emit("compact");
       this.updateHeight();
@@ -385,7 +387,6 @@ export default {
       if (l === undefined || l === null) {
         l = { h: 0, w: 0 };
       }
-
       let hasCollisions;
       if (this.preventCollision) {
         const collisions = getAllCollisions(this.layout, { ...l, w, h }).filter(
@@ -407,7 +408,6 @@ export default {
           if (Number.isFinite(leastY)) l.h = leastY - l.y;
         }
       }
-
       if (!hasCollisions) {
         // Set new width and height.
         l.w = w;
@@ -433,8 +433,10 @@ export default {
 
       if (this.responsive) this.responsiveGridLayout();
 
-      compact(this.layout, this.verticalCompact);
+      compact(this.layout, this.verticalCompact, this.freeDrag);
+
       this.eventBus.$emit("compact");
+
       this.updateHeight();
 
       if (eventName === "resizeend") this.$emit("layout-updated", this.layout);
@@ -457,7 +459,8 @@ export default {
         newBreakpoint,
         this.lastBreakpoint,
         newCols,
-        this.verticalCompact
+        this.verticalCompact,
+        this.freeDrag
       );
 
       // Store the new layout.

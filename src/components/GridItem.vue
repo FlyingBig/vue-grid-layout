@@ -11,7 +11,6 @@
       ref="handle"
       :class="resizableHandleClass"
     ></span>
-    <!--<span v-if="draggable" ref="dragHandle" class="vue-draggable-handle"></span>-->
   </div>
 </template>
 <style>
@@ -111,7 +110,6 @@ import {
 import { getControlPosition, createCoreData } from "@/helpers/draggableUtils";
 import { getColsFromBreakpoint } from "@/helpers/responsiveUtils";
 import { getDocumentDir } from "@/helpers/DOM";
-//    var eventBus = require('./eventBus');
 
 import interact from "interactjs";
 
@@ -665,7 +663,6 @@ export default {
           //                        console.log("### DROP: " + JSON.stringify(newPosition));
           this.dragging = null;
           this.isDragging = false;
-          // shouldUpdate = true;
           break;
         }
         case "dragmove": {
