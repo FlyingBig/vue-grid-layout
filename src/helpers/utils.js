@@ -240,7 +240,6 @@ export function moveElement(
   freeDrag: Boolean
 ): Layout {
   if (l.static) return layout;
-
   // Short-circuit if nothing to do.
   //if (l.y === y && l.x === x) return layout;
 

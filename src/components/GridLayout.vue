@@ -67,7 +67,7 @@ export default {
     },
     freeDrag: {
       type: Boolean,
-      default: true,
+      default: false,
     },
     colNum: {
       type: Number,
@@ -164,8 +164,17 @@ export default {
     const self = this;
 
     // Accessible refernces of functions for removing in beforeDestroy
-    self.resizeEventHandler = function (eventType, i, x, y, h, w) {
-      self.resizeEvent(eventType, i, x, y, h, w);
+    self.resizeEventHandler = function (
+      eventType,
+      i,
+      x,
+      y,
+      h,
+      w,
+      isMoveLeft,
+      isMoveUp
+    ) {
+      self.resizeEvent(eventType, i, x, y, h, w, isMoveLeft, isMoveUp);
     };
 
     self.dragEventHandler = function (eventType, i, x, y, h, w) {
@@ -208,16 +217,16 @@ export default {
         self.$emit("layout-updated", self.layout);
 
         self.updateHeight();
-            self.$nextTick(function () {
-              this.erd = elementResizeDetectorMaker({
-                strategy: "scroll", //<- For ultra performance.
-                // See https://github.com/wnr/element-resize-detector/issues/110 about callOnAdd.
-                callOnAdd: false,
-              });
-              this.erd.listenTo(self.$refs.item, function () {
-                self.onWindowResize();
-              });
-            });
+        self.$nextTick(function () {
+          this.erd = elementResizeDetectorMaker({
+            strategy: "scroll", //<- For ultra performance.
+            // See https://github.com/wnr/element-resize-detector/issues/110 about callOnAdd.
+            callOnAdd: false,
+          });
+          this.erd.listenTo(self.$refs.item, function () {
+            self.onWindowResize();
+          });
+        });
       });
     });
   },
@@ -311,7 +320,6 @@ export default {
         compact(this.layout, this.verticalCompact, this.freeDrag);
         this.eventBus.$emit("updateWidth", this.width);
         this.updateHeight();
-        console.log(this.layout)
         this.$emit("layout-updated", this.layout);
       }
     },
@@ -341,13 +349,10 @@ export default {
       return containerHeight;
     },
     dragEvent: function (eventName, id, x, y, h, w) {
-      //console.log(eventName + " id=" + id + ", x=" + x + ", y=" + y);
       let l = getLayoutItem(this.layout, id);
-      //GetLayoutItem sometimes returns null object
       if (l === undefined || l === null) {
         l = { x: 0, y: 0 };
       }
-
       if (eventName === "dragmove" || eventName === "dragstart") {
         this.placeholder.i = id;
         this.placeholder.x = l.x;
@@ -357,14 +362,12 @@ export default {
         this.$nextTick(function () {
           this.isDragging = true;
         });
-        //this.$broadcast("updateWidth", this.width);
         this.eventBus.$emit("updateWidth", this.width);
       } else {
         this.$nextTick(function () {
           this.isDragging = false;
         });
       }
-
       // Move the element to the dragged location.
       this.layout = moveElement(
         this.layout,
@@ -381,7 +384,19 @@ export default {
       this.updateHeight();
       if (eventName === "dragend") this.$emit("layout-updated", this.layout);
     },
-    resizeEvent: function (eventName, id, x, y, h, w) {
+    /**
+     * @description: resize单元个尺寸 (x,y,w,h单位均为最小单元格尺寸)
+     * @param {*} eventName 事件名称
+     * @param {*} id 被拖动单元格ID
+     * @param {*} x x坐标
+     * @param {*} y y坐标
+     * @param {*} h 高
+     * @param {*} w 宽
+     * @param {*} isMoveLeft 是否向左resize
+     * @param {*} isMoveUp 是否向上resize
+     * @return {*}
+     */
+    resizeEvent: function (eventName, id, x, y, h, w, isMoveLeft, isMoveUp) {
       let l = getLayoutItem(this.layout, id);
       //GetLayoutItem sometimes return null object
       if (l === undefined || l === null) {
@@ -409,11 +424,9 @@ export default {
         }
       }
       if (!hasCollisions) {
-        // Set new width and height.
         l.w = w;
         l.h = h;
       }
-
       if (eventName === "resizestart" || eventName === "resizemove") {
         this.placeholder.i = id;
         this.placeholder.x = x;
@@ -430,7 +443,18 @@ export default {
           this.isDragging = false;
         });
       }
-
+      // 移动单元格
+      if (isMoveLeft || isMoveUp) {
+        this.layout = moveElement(
+          this.layout,
+          l,
+          x,
+          y,
+          true,
+          this.preventCollision,
+          this.freeDrag
+        );
+      }
       if (this.responsive) this.responsiveGridLayout();
 
       compact(this.layout, this.verticalCompact, this.freeDrag);
