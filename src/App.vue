@@ -44,6 +44,10 @@
       /> Responsive
       <input
         type="checkbox"
+        v-model="freeResize"
+      /> freeResize
+      <input
+        type="checkbox"
         v-model="preventCollision"
       /> Prevent Collision
       <div style="margin-top: 10px;margin-bottom: 10px;">
@@ -74,6 +78,7 @@
         :vertical-compact="compact"
         :use-css-transforms="true"
         :responsive="responsive"
+        :freeResize="freeResize"
         @layout-created="layoutCreatedEvent"
         @layout-before-mount="layoutBeforeMountEvent"
         @layout-mounted="layoutMountedEvent"
@@ -134,42 +139,6 @@ let testLayout = [
     maxY: 2,
   },
   {
-    x: 2,
-    y: 0,
-    w: 2,
-    h: 4,
-    i: "1",
-    resizable: null,
-    draggable: null,
-    static: true,
-  },
-  {
-    x: 4,
-    y: 0,
-    w: 2,
-    h: 5,
-    i: "2",
-    resizable: false,
-    draggable: false,
-    static: false,
-    minX: 4,
-    maxX: 4,
-    minW: 2,
-    maxW: 2,
-    preserveAspectRatio: true,
-  },
-  {
-    x: 6,
-    y: 0,
-    w: 2,
-    h: 3,
-    i: "3",
-    resizable: false,
-    draggable: false,
-    static: false,
-    preserveAspectRatio: true,
-  },
-  {
     x: 8,
     y: 0,
     w: 2,
@@ -218,16 +187,6 @@ let testLayout = [
     resizable: false,
     draggable: false,
     static: false,
-  },
-  {
-    x: 6,
-    y: 3,
-    w: 2,
-    h: 4,
-    i: "9",
-    resizable: false,
-    draggable: false,
-    static: true,
   },
   {
     x: 8,
@@ -347,6 +306,7 @@ export default {
       draggable: true,
       resizable: true,
       mirrored: false,
+      freeResize: false,
       responsive: true,
       preventCollision: false,
       compact: true,

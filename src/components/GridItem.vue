@@ -7,12 +7,12 @@
   >
     <slot></slot>
     <span
-      v-if="resizableAndNotStatic"
+      v-if="resizableAndNotStatic && $parent.freeResize"
       ref="handle"
       :class="resizableHandleClass(0)"
     ></span>
     <span
-      v-if="resizableAndNotStatic"
+      v-if="resizableAndNotStatic && $parent.freeResize"
       ref="handle"
       :class="resizableHandleClass(1)"
     ></span>
@@ -22,7 +22,7 @@
       :class="resizableHandleClass(2)"
     ></span>
     <span
-      v-if="resizableAndNotStatic"
+      v-if="resizableAndNotStatic && $parent.freeResize"
       ref="handle"
       :class="resizableHandleClass(3)"
     ></span>
@@ -426,6 +426,9 @@ export default {
       this.createStyle();
       this.emitContainerResized();
     },
+    "$parent.freeResize": function (value) {
+      this.tryMakeResizable(value);
+    },
   },
   computed: {
     classObj() {
@@ -605,6 +608,7 @@ export default {
           this.calcXY(newPosition.top, newPosition.left)
         );
       }
+      console.log(pos, newPosition)
       if (pos.w < this.minW) {
         pos.w = this.minW;
       }
@@ -882,26 +886,39 @@ export default {
 
         // console.log("### MAX " + JSON.stringify(maximum));
         // console.log("### MIN " + JSON.stringify(minimum));
-
-        const opts = {
-          edges: {
+        let edges = {};
+        if (this.$parent.freeResize) {
+          edges = {
             left: true,
             right: true,
             bottom: true,
             top: true,
-          },
-          ignoreFrom: this.resizeIgnoreFrom,
-          restrictSize: {
-            min: {
-              height: minimum.height,
-              width: minimum.width,
+          };
+        } else {
+          edges = {
+            left: false,
+            right: ".vue-resizable-handle-2",
+            bottom: ".vue-resizable-handle-2",
+            top: false,
+          };
+        }
+        const opts = Object.assign(
+          {},
+          {
+            ignoreFrom: this.resizeIgnoreFrom,
+            restrictSize: {
+              min: {
+                height: minimum.height,
+                width: minimum.width,
+              },
+              max: {
+                height: maximum.height,
+                width: maximum.width,
+              },
             },
-            max: {
-              height: maximum.height,
-              width: maximum.width,
-            },
           },
-        };
+          {edges}
+        );  
 
         if (this.preserveAspectRatio) {
           opts.modifiers = [

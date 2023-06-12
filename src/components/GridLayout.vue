@@ -69,6 +69,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    freeResize: {
+      type: Boolean,
+      default: false,
+    },
     colNum: {
       type: Number,
       default: 12,
@@ -320,7 +324,7 @@ export default {
         compact(this.layout, this.verticalCompact, this.freeDrag);
         this.eventBus.$emit("updateWidth", this.width);
         this.updateHeight();
-        this.$emit("layout-updated", this.layout);
+        // this.$emit("layout-updated", this.layout);
       }
     },
     updateHeight: function () {
