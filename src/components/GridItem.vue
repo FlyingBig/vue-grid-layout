@@ -608,7 +608,6 @@ export default {
           this.calcXY(newPosition.top, newPosition.left)
         );
       }
-      console.log(pos, newPosition)
       if (pos.w < this.minW) {
         pos.w = this.minW;
       }
