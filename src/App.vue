@@ -26,6 +26,10 @@
       <button @click="addItemDynamically">Add an item dynamically</button>
       <!-- Add to show rtl support -->
       <button @click="changeDirection">Change Direction</button>
+      <select v-model="colNumUnit">
+        <option>%</option>
+        <option>px</option>
+      </select>
       <input
         type="checkbox"
         v-model="draggable"
@@ -70,6 +74,7 @@
         :margin="[parseInt(marginX), parseInt(marginY)]"
         :layout.sync="layout"
         :col-num="parseInt(colNum)"
+        :col-num-unit="colNumUnit"
         :row-height="+rowHeight"
         :is-draggable="draggable"
         :is-resizable="resizable"
@@ -307,14 +312,15 @@ export default {
       resizable: true,
       mirrored: false,
       freeResize: false,
-      responsive: true,
+      responsive: false,
       preventCollision: false,
       compact: true,
       rowHeight: 30,
-      colNum: 12,
+      colNum: 100,
       index: 0,
       marginX: 10,
       marginY: 10,
+      colNumUnit: "px",
     };
   },
   mounted: function () {
@@ -371,49 +377,16 @@ export default {
       console.log("MOVE i=" + i + ", X=" + newX + ", Y=" + newY);
     },
     resize: function (i, newH, newW, newHPx, newWPx) {
-      console.log(
-        "RESIZE i=" +
-          i +
-          ", H=" +
-          newH +
-          ", W=" +
-          newW +
-          ", H(px)=" +
-          newHPx +
-          ", W(px)=" +
-          newWPx
-      );
+      console.log("RESIZE i=" + i + ", H=" + newH + ", W=" + newW + ", H(px)=" + newHPx + ", W(px)=" + newWPx);
     },
     moved: function (i, newX, newY) {
       console.log("### MOVED i=" + i + ", X=" + newX + ", Y=" + newY);
     },
     resized: function (i, newH, newW, newHPx, newWPx) {
-      console.log(
-        "### RESIZED i=" +
-          i +
-          ", H=" +
-          newH +
-          ", W=" +
-          newW +
-          ", H(px)=" +
-          newHPx +
-          ", W(px)=" +
-          newWPx
-      );
+      console.log("### RESIZED i=" + i + ", H=" + newH + ", W=" + newW + ", H(px)=" + newHPx + ", W(px)=" + newWPx);
     },
     containerResized: function (i, newH, newW, newHPx, newWPx) {
-      console.log(
-        "### CONTAINER RESIZED i=" +
-          i +
-          ", H=" +
-          newH +
-          ", W=" +
-          newW +
-          ", H(px)=" +
-          newHPx +
-          ", W(px)=" +
-          newWPx
-      );
+      console.log("### CONTAINER RESIZED i=" + i + ", H=" + newH + ", W=" + newW + ", H(px)=" + newHPx + ", W(px)=" + newWPx);
     },
     /**
      * Add change direction button
@@ -446,12 +419,7 @@ export default {
       console.log("Updated layout: ", newLayout);
     },
     breakpointChangedEvent: function (newBreakpoint, newLayout) {
-      console.log(
-        "breakpoint changed breakpoint=",
-        newBreakpoint,
-        ", layout: ",
-        newLayout
-      );
+      console.log("breakpoint changed breakpoint=", newBreakpoint, ", layout: ", newLayout);
     },
   },
 };
@@ -486,7 +454,7 @@ export default {
         }*/
 </style>
 
-<style lang="scss">
+<style>
 #app {
   font-family: "Avenir", Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;

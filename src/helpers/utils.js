@@ -46,7 +46,15 @@ export function bottom(layout: Layout): number {
   }
   return max;
 }
-
+export function right(layout: Layout): number {
+  let max = 0,
+    right;
+  for (let i = 0, len = layout.length; i < len; i++) {
+    right = layout[i].x + layout[i].w;
+    if (right > max) max = right;
+  }
+  return max;
+}
 export function cloneLayout(layout: Layout): Layout {
   const newLayout = Array(layout.length);
   for (let i = 0, len = layout.length; i < len; i++) {
@@ -90,7 +98,11 @@ export function collides(l1: LayoutItem, l2: LayoutItem): boolean {
  *   vertically.
  * @return {Array}       Compacted Layout.
  */
-export function compact(layout: Layout, verticalCompact: Boolean, freeDrag: Boolean): Layout {
+export function compact(
+  layout: Layout,
+  verticalCompact: Boolean,
+  freeDrag: Boolean
+): Layout {
   // Statics go in the compareWith array right away so items flow around them.
   const compareWith = getStatics(layout);
   // We go through the items by row and column.

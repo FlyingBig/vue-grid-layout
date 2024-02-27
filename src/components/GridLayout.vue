@@ -26,27 +26,12 @@
 import Vue from "vue";
 const elementResizeDetectorMaker = require("element-resize-detector");
 
-import {
-  bottom,
-  compact,
-  getLayoutItem,
-  moveElement,
-  validateLayout,
-  cloneLayout,
-  getAllCollisions,
-} from "@/helpers/utils";
-import {
-  getBreakpointFromWidth,
-  getColsFromBreakpoint,
-  findOrGenerateResponsiveLayout,
-} from "@/helpers/responsiveUtils";
+import { bottom, right, compact, getLayoutItem, moveElement, validateLayout, cloneLayout, getAllCollisions } from "@/helpers/utils";
+import { getBreakpointFromWidth, getColsFromBreakpoint, findOrGenerateResponsiveLayout } from "@/helpers/responsiveUtils";
 //var eventBus = require('./eventBus');
 
 import GridItem from "./GridItem.vue";
-import {
-  addWindowEventListener,
-  removeWindowEventListener,
-} from "@/helpers/DOM";
+import { addWindowEventListener, removeWindowEventListener } from "@/helpers/DOM";
 
 export default {
   name: "GridLayout",
@@ -76,6 +61,10 @@ export default {
     colNum: {
       type: Number,
       default: 12,
+    },
+    colNumUnit: {
+      type: String,
+      default: "%",
     },
     rowHeight: {
       type: Number,
@@ -168,16 +157,7 @@ export default {
     const self = this;
 
     // Accessible refernces of functions for removing in beforeDestroy
-    self.resizeEventHandler = function (
-      eventType,
-      i,
-      x,
-      y,
-      h,
-      w,
-      isMoveLeft,
-      isMoveUp
-    ) {
+    self.resizeEventHandler = function (eventType, i, x, y, h, w, isMoveLeft, isMoveUp) {
       self.resizeEvent(eventType, i, x, y, h, w, isMoveLeft, isMoveUp);
     };
 
@@ -274,6 +254,9 @@ export default {
     colNum: function (val) {
       this.eventBus.$emit("setColNum", val);
     },
+    colNumUnit: function (val) {
+      this.eventBus.$emit("setColNumUnit", val);
+    },
     rowHeight: function () {
       this.eventBus.$emit("setRowHeight", this.rowHeight);
     },
@@ -330,27 +313,26 @@ export default {
     updateHeight: function () {
       this.mergedStyle = {
         height: this.containerHeight(),
+        width: this.containerWidth()
       };
     },
     onWindowResize: function () {
-      if (
-        this.$refs !== null &&
-        this.$refs.item !== null &&
-        this.$refs.item !== undefined
-      ) {
+      if (this.$refs !== null && this.$refs.item !== null && this.$refs.item !== undefined) {
         this.width = this.$refs.item.offsetWidth;
       }
       this.eventBus.$emit("resizeEvent");
     },
     containerHeight: function () {
       if (!this.autoSize) return;
-      // console.log("bottom: " + bottom(this.layout))
-      // console.log("rowHeight + margins: " + (this.rowHeight + this.margin[1]) + this.margin[1])
-      const containerHeight =
-        bottom(this.layout) * (this.rowHeight + this.margin[1]) +
-        this.margin[1] +
-        "px";
+      const containerHeight = bottom(this.layout) * (this.rowHeight + this.margin[1]) + this.margin[1] + "px";
       return containerHeight;
+    },
+    containerWidth: function () {
+      if (this.colNumUnit === "px") {
+        const containerWidth = right(this.layout) * (this.colNum + this.margin[1]) + this.margin[1] + "px";
+        return containerWidth;
+      }
+      return;
     },
     dragEvent: function (eventName, id, x, y, h, w) {
       let l = getLayoutItem(this.layout, id);
@@ -373,15 +355,7 @@ export default {
         });
       }
       // Move the element to the dragged location.
-      this.layout = moveElement(
-        this.layout,
-        l,
-        x,
-        y,
-        true,
-        this.preventCollision,
-        this.freeDrag
-      );
+      this.layout = moveElement(this.layout, l, x, y, true, this.preventCollision, this.freeDrag);
       compact(this.layout, this.verticalCompact, this.freeDrag);
       // needed because vue can't detect changes on array element properties
       this.eventBus.$emit("compact");
@@ -402,15 +376,13 @@ export default {
      */
     resizeEvent: function (eventName, id, x, y, h, w, isMoveLeft, isMoveUp) {
       let l = getLayoutItem(this.layout, id);
-      //GetLayoutItem sometimes return null object
+      // GetLayoutItem sometimes return null object
       if (l === undefined || l === null) {
         l = { h: 0, w: 0 };
       }
       let hasCollisions;
       if (this.preventCollision) {
-        const collisions = getAllCollisions(this.layout, { ...l, w, h }).filter(
-          (layoutItem) => layoutItem.i !== l.i
-        );
+        const collisions = getAllCollisions(this.layout, { ...l, w, h }).filter((layoutItem) => layoutItem.i !== l.i);
         hasCollisions = collisions.length > 0;
 
         // If we're colliding, we need adjust the placeholder.
@@ -449,15 +421,7 @@ export default {
       }
       // 移动单元格
       if (isMoveLeft || isMoveUp) {
-        this.layout = moveElement(
-          this.layout,
-          l,
-          x,
-          y,
-          true,
-          this.preventCollision,
-          this.freeDrag
-        );
+        this.layout = moveElement(this.layout, l, x, y, true, this.preventCollision, this.freeDrag);
       }
       if (this.responsive) this.responsiveGridLayout();
 
@@ -476,20 +440,10 @@ export default {
       let newCols = getColsFromBreakpoint(newBreakpoint, this.cols);
 
       // save actual layout in layouts
-      if (this.lastBreakpoint != null && !this.layouts[this.lastBreakpoint])
-        this.layouts[this.lastBreakpoint] = cloneLayout(this.layout);
+      if (this.lastBreakpoint != null && !this.layouts[this.lastBreakpoint]) this.layouts[this.lastBreakpoint] = cloneLayout(this.layout);
 
       // Find or generate a new layout.
-      let layout = findOrGenerateResponsiveLayout(
-        this.originalLayout,
-        this.layouts,
-        this.breakpoints,
-        newBreakpoint,
-        this.lastBreakpoint,
-        newCols,
-        this.verticalCompact,
-        this.freeDrag
-      );
+      let layout = findOrGenerateResponsiveLayout(this.originalLayout, this.layouts, this.breakpoints, newBreakpoint, this.lastBreakpoint, newCols, this.verticalCompact, this.freeDrag);
 
       // Store the new layout.
       this.layouts[newBreakpoint] = layout;
@@ -502,10 +456,7 @@ export default {
       this.$emit("update:layout", layout);
 
       this.lastBreakpoint = newBreakpoint;
-      this.eventBus.$emit(
-        "setColNum",
-        getColsFromBreakpoint(newBreakpoint, this.cols)
-      );
+      this.eventBus.$emit("setColNum", getColsFromBreakpoint(newBreakpoint, this.cols));
     },
 
     // clear all responsive layouts

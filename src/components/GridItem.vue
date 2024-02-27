@@ -127,8 +127,7 @@
 .grid::before {
   content: "";
   background-size: calc(calc(100% - 5px) / 12) 40px;
-  background-image: linear-gradient(to right, lightgrey 1px, transparent 1px),
-    linear-gradient(to bottom, lightgrey 1px, transparent 1px);
+  background-image: linear-gradient(to right, lightgrey 1px, transparent 1px), linear-gradient(to bottom, lightgrey 1px, transparent 1px);
   height: calc(100% - 5px);
   width: calc(100% - 5px);
   position: absolute;
@@ -226,6 +225,7 @@ export default {
   data: function () {
     return {
       cols: 1,
+      colUnit: "%", // 列单位(支持%, px);
       containerWidth: 100,
       rowHeight: 30,
       margin: [10, 10],
@@ -300,6 +300,10 @@ export default {
       self.cols = parseInt(colNum);
     };
 
+    self.setColNumUnit = (unit) => {
+      self.colUnit = unit;
+    };
+
     this.eventBus.$on("updateWidth", self.updateWidthHandler);
     this.eventBus.$on("compact", self.compactHandler);
     this.eventBus.$on("setDraggable", self.setDraggableHandler);
@@ -307,7 +311,7 @@ export default {
     this.eventBus.$on("setRowHeight", self.setRowHeightHandler);
     this.eventBus.$on("setMaxRows", self.setMaxRowsHandler);
     this.eventBus.$on("setColNum", self.setColNum);
-
+    this.eventBus.$on("setColNumUnit", self.setColNumUnit);
     this.rtl = getDocumentDir() === "rtl";
   },
   beforeDestroy: function () {
@@ -320,23 +324,21 @@ export default {
     this.eventBus.$off("setRowHeight", self.setRowHeightHandler);
     this.eventBus.$off("setMaxRows", self.setMaxRowsHandler);
     this.eventBus.$off("setColNum", self.setColNum);
+    this.eventBus.$off("setColNumUnit", self.setColNumUnit);
     if (this.interactObj) {
       this.interactObj.unset(); // destroy interact intance
     }
   },
   mounted: function () {
     if (this.layout.responsive && this.layout.lastBreakpoint) {
-      this.cols = getColsFromBreakpoint(
-        this.layout.lastBreakpoint,
-        this.layout.cols
-      );
+      this.cols = getColsFromBreakpoint(this.layout.lastBreakpoint, this.layout.cols);
     } else {
       this.cols = this.layout.colNum;
+      this.colUnit = this.layout.colNumUnit;
     }
     this.rowHeight = this.layout.rowHeight;
     this.containerWidth = this.layout.width !== null ? this.layout.width : 100;
-    this.margin =
-      this.layout.margin !== undefined ? this.layout.margin : [10, 10];
+    this.margin = this.layout.margin !== undefined ? this.layout.margin : [10, 10];
     this.maxRows = this.layout.maxRows;
 
     if (this.isDraggable === null) {
@@ -373,12 +375,14 @@ export default {
     rowHeight: function () {
       this.tryMakeResizable();
       this.createStyle();
-      this.emitContainerResized();
     },
     cols: function () {
       this.tryMakeResizable();
       this.createStyle();
-      this.emitContainerResized();
+    },
+    colUnit: function() {
+      this.tryMakeResizable();
+      this.createStyle();
     },
     containerWidth: function () {
       this.tryMakeResizable();
@@ -416,10 +420,7 @@ export default {
       this.tryMakeResizable();
     },
     "$parent.margin": function (margin) {
-      if (
-        !margin ||
-        (margin[0] == this.margin[0] && margin[1] == this.margin[1])
-      ) {
+      if (!margin || (margin[0] == this.margin[0] && margin[1] == this.margin[1])) {
         return;
       }
       this.margin = margin.map((m) => Number(m));
@@ -461,24 +462,18 @@ export default {
       }
     },
     createStyle: function () {
-      if (this.x + this.w > this.cols) {
+      // 当"列"单位为百分比，才限制最大宽度
+      if (this.colUnit === "%" && this.x + this.w > this.cols) {
         this.innerX = 0;
         this.innerW = this.w > this.cols ? this.cols : this.w;
       } else {
         this.innerX = this.x;
         this.innerW = this.w;
       }
-      let pos = this.calcPosition(
-        this.innerX,
-        this.innerY,
-        this.innerW,
-        this.innerH
-      );
+      let pos = this.calcPosition(this.innerX, this.innerY, this.innerW, this.innerH);
 
       if (this.isDragging) {
         pos.top = this.dragging.top;
-        //                    Add rtl support
-
         pos.left = this.dragging.left;
       }
       if (this.isResizing) {
@@ -508,14 +503,7 @@ export default {
         if (!matches) return;
         styleProps[prop] = matches[1];
       }
-      this.$emit(
-        "container-resized",
-        this.i,
-        this.h,
-        this.w,
-        styleProps.height,
-        styleProps.width
-      );
+      this.$emit("container-resized", this.i, this.h, this.w, styleProps.height, styleProps.width);
     },
     handleResize: function (event) {
       if (this.static) return;
@@ -533,12 +521,7 @@ export default {
         case "resizestart": {
           this.previousW = this.innerW;
           this.previousH = this.innerH;
-          pos = this.calcPosition(
-            this.innerX,
-            this.innerY,
-            this.innerW,
-            this.innerH
-          );
+          pos = this.calcPosition(this.innerX, this.innerY, this.innerW, this.innerH);
           newSize.width = pos.width;
           newSize.height = pos.height;
           // 若是上/左移动则初始化移动数据
@@ -556,10 +539,8 @@ export default {
           // console.log("### resize => " + event.type + ", lastW=" + this.lastW + ", lastH=" + this.lastH);
           const coreEvent = createCoreData(this.lastW, this.lastH, x, y);
 
-          newSize.width =
-            this.resizing.width + coreEvent.deltaX * (isMoveLeft ? -1 : 1);
-          newSize.height =
-            this.resizing.height + coreEvent.deltaY * (isMoveUp ? -1 : 1);
+          newSize.width = this.resizing.width + coreEvent.deltaX * (isMoveLeft ? -1 : 1);
+          newSize.height = this.resizing.height + coreEvent.deltaY * (isMoveUp ? -1 : 1);
           this.resizing = newSize;
           // 处理左/上方向拉伸位置数据
           if (isMoveLeft && isMoveUp) {
@@ -578,12 +559,7 @@ export default {
           break;
         }
         case "resizeend": {
-          pos = this.calcPosition(
-            this.innerX,
-            this.innerY,
-            this.innerW,
-            this.innerH
-          );
+          pos = this.calcPosition(this.innerX, this.innerY, this.innerW, this.innerH);
           newSize.width = pos.width;
           newSize.height = pos.height;
           // 取消拖动事件
@@ -602,11 +578,7 @@ export default {
       // Get new WH
       pos = this.calcWH(newSize.height, newSize.width);
       if (isMoveLeft || isMoveUp) {
-        pos = Object.assign(
-          {},
-          pos,
-          this.calcXY(newPosition.top, newPosition.left)
-        );
+        pos = Object.assign({}, pos, this.calcXY(newPosition.top, newPosition.left));
       }
       if (pos.w < this.minW) {
         pos.w = this.minW;
@@ -630,30 +602,13 @@ export default {
 
       this.lastW = x;
       this.lastH = y;
-
       if (this.innerW !== pos.w || this.innerH !== pos.h) {
-        this.$emit(
-          "resize",
-          this.i,
-          pos.h,
-          pos.w,
-          newSize.height,
-          newSize.width
-        );
+        this.$emit("resize", this.i, pos.h, pos.w, newSize.height, newSize.width);
       }
-      if (
-        event.type === "resizeend" &&
-        (this.previousW !== this.innerW || this.previousH !== this.innerH)
-      ) {
-        this.$emit(
-          "resized",
-          this.i,
-          pos.h,
-          pos.w,
-          newSize.height,
-          newSize.width
-        );
+      if (event.type === "resizeend" && (this.previousW !== this.innerW || this.previousH !== this.innerH)) {
+        this.$emit("resized", this.i, pos.h, pos.w, newSize.height, newSize.width);
       }
+
       this.eventBus.$emit(
         "resizeEvent",
         event.type,
@@ -710,10 +665,7 @@ export default {
         }
         case "dragmove": {
           const coreEvent = createCoreData(this.lastX, this.lastY, x, y);
-          //                        Add rtl support
-
           newPosition.left = this.dragging.left + coreEvent.deltaX;
-
           newPosition.top = this.dragging.top + coreEvent.deltaY;
           //                        console.log("### drag => " + event.type + ", x=" + x + ", y=" + y);
           //                        console.log("### drag => " + event.type + ", deltaX=" + coreEvent.deltaX + ", deltaY=" + coreEvent.deltaY);
@@ -727,28 +679,16 @@ export default {
       let pos;
 
       pos = this.calcXY(newPosition.top, newPosition.left);
-
       this.lastX = x;
       this.lastY = y;
 
       if (this.innerX !== pos.x || this.innerY !== pos.y) {
         this.$emit("move", this.i, pos.x, pos.y);
       }
-      if (
-        event.type === "dragend" &&
-        (this.previousX !== this.innerX || this.previousY !== this.innerY)
-      ) {
+      if (event.type === "dragend" && (this.previousX !== this.innerX || this.previousY !== this.innerY)) {
         this.$emit("moved", this.i, pos.x, pos.y);
       }
-      this.eventBus.$emit(
-        "dragEvent",
-        event.type,
-        this.i,
-        pos.x,
-        pos.y,
-        this.innerH,
-        this.innerW
-      );
+      this.eventBus.$emit("dragEvent", event.type, this.i, pos.x, pos.y, this.innerH, this.innerW);
     },
     calcPosition: function (x, y, w, h) {
       const colWidth = this.calcColWidth();
@@ -761,16 +701,8 @@ export default {
         // 0 * Infinity === NaN, which causes problems with resize constriants;
         // Fix this if it occurs.
         // Note we do it here rather than later because Math.round(Infinity) causes deopt
-        width:
-          w === Infinity
-            ? w
-            : Math.round(colWidth * w + Math.max(0, w - 1) * this.margin[0]),
-        height:
-          h === Infinity
-            ? h
-            : Math.round(
-                this.rowHeight * h + Math.max(0, h - 1) * this.margin[1]
-              ),
+        width: w === Infinity ? w : Math.round(colWidth * w + Math.max(0, w - 1) * this.margin[0]),
+        height: h === Infinity ? h : Math.round(this.rowHeight * h + Math.max(0, h - 1) * this.margin[1]),
       };
 
       return out;
@@ -793,21 +725,24 @@ export default {
       // (l - m) / (c + m) = x
       // x = (left - margin) / (coldWidth + margin)
       let x = Math.round((left - this.margin[0]) / (colWidth + this.margin[0]));
-      let y = Math.round(
-        (top - this.margin[1]) / (this.rowHeight + this.margin[1])
-      );
+      let y = Math.round((top - this.margin[1]) / (this.rowHeight + this.margin[1]));
 
       // Capping
-      x = Math.max(Math.min(x, this.cols - this.innerW), 0);
-      y = Math.max(Math.min(y, this.maxRows - this.innerH), 0);
+      if (this.colUnit === "%") {
+        x = Math.max(Math.min(x, this.cols - this.innerW), 0);
+        y = Math.max(Math.min(y, this.maxRows - this.innerH), 0);
+      }
 
       return { x, y };
     },
     // Helper for generating column width
     calcColWidth() {
-      const colWidth =
-        (this.containerWidth - this.margin[0] * (this.cols + 1)) / this.cols;
-      // console.log("### COLS=" + this.cols + " COL WIDTH=" + colWidth + " MARGIN " + this.margin[0]);
+      let colWidth = 0;
+      if (this.colUnit === "%") {
+        colWidth = (this.containerWidth - this.margin[0] * (this.cols + 1)) / this.cols;
+      } else {
+        colWidth = this.cols;
+      }
       return colWidth;
     },
 
@@ -819,20 +754,14 @@ export default {
      */
     calcWH(height, width) {
       const colWidth = this.calcColWidth();
-
-      // width = colWidth * w - (margin * (w - 1))
-      // ...
-      // w = (width + margin) / (colWidth + margin)
-      let w = Math.round(
-        (width + this.margin[0]) / (colWidth + this.margin[0])
-      );
-      let h = Math.round(
-        (height + this.margin[1]) / (this.rowHeight + this.margin[1])
-      );
+      let w = Math.round((width + this.margin[0]) / (colWidth + this.margin[0]));
+      let h = Math.round((height + this.margin[1]) / (this.rowHeight + this.margin[1]));
 
       // Capping
-      w = Math.max(Math.min(w, this.cols - this.innerX), 0);
-      h = Math.max(Math.min(h, this.maxRows - this.innerY), 0);
+      if (this.colUnit === "%") {
+        w = Math.max(Math.min(w, this.cols - this.innerX), 0);
+        h = Math.max(Math.min(h, this.maxRows - this.innerY), 0);
+      }
       return { w, h };
     },
     updateWidth: function (width, colNum) {
@@ -916,8 +845,8 @@ export default {
               },
             },
           },
-          {edges}
-        );  
+          { edges }
+        );
 
         if (this.preserveAspectRatio) {
           opts.modifiers = [
@@ -930,12 +859,9 @@ export default {
         this.interactObj.resizable(opts);
         if (!this.resizeEventSet) {
           this.resizeEventSet = true;
-          this.interactObj.on(
-            "resizestart resizemove resizeend",
-            function (event) {
-              self.handleResize(event);
-            }
-          );
+          this.interactObj.on("resizestart resizemove resizeend", function (event) {
+            self.handleResize(event);
+          });
         }
       } else {
         this.interactObj.resizable({
@@ -974,33 +900,11 @@ export default {
       // this.lastH = y;
 
       if (this.innerW !== pos.w || this.innerH !== pos.h) {
-        this.$emit(
-          "resize",
-          this.i,
-          pos.h,
-          pos.w,
-          newSize.height,
-          newSize.width
-        );
+        this.$emit("resize", this.i, pos.h, pos.w, newSize.height, newSize.width);
       }
       if (this.previousW !== pos.w || this.previousH !== pos.h) {
-        this.$emit(
-          "resized",
-          this.i,
-          pos.h,
-          pos.w,
-          newSize.height,
-          newSize.width
-        );
-        this.eventBus.$emit(
-          "resizeEvent",
-          "resizeend",
-          this.i,
-          this.innerX,
-          this.innerY,
-          pos.h,
-          pos.w
-        );
+        this.$emit("resized", this.i, pos.h, pos.w, newSize.height, newSize.width);
+        this.eventBus.$emit("resizeEvent", "resizeend", this.i, this.innerX, this.innerY, pos.h, pos.w);
       }
     },
   },
